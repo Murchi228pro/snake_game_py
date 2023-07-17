@@ -46,7 +46,7 @@ fonts = {
 }
 
 window = pygame.display.set_mode((WIDTH, HEIGHT))
-
+clock = pygame.time.Clock()
 person = Hero(10, 50, rotation='r')
 while True:
     person.score = 0
@@ -92,7 +92,6 @@ while True:
 
         window.fill(BG_COLOR)
 
-        pygame.draw.rect(window, PERSON_COLOR, person, 10)
         foods = [pygame.draw.rect(window, random.choice(RANDOM_COLORS),
                                   (*i, 5, 5))for i in food_list]
         for food in enumerate(foods, 0):
@@ -112,7 +111,7 @@ while True:
         )
         window.blit(score, (10, 10))
         window.blit(before_death_text, (650, 10))
-
+        pygame.draw.rect(window, PERSON_COLOR, person, 10)
         pygame.display.update()
 
         before_death -= 0.2
