@@ -1,122 +1,112 @@
-import pygame
+import pygame as pg
 import sys
-from pygame import K_DOWN, K_UP, K_LEFT, K_RIGHT
-from pygame.font import match_font
-import random
+import random as rn
 
 
-HEIGHT = 400
-WIDTH = 800
-
-BG_COLOR = pygame.Color(0, 0, 0)
-PERSON_COLOR = pygame.Color(0, 255, 0)
-RANDOM_COLORS = (pygame.Color(0, 255, 0), pygame.Color(
-    255, 0, 0), pygame.Color(0, 0, 255))
-
-
-class Hero(pygame.Rect):
-
-    def __init__(self, x, y, rotation: str):
-        super().__init__((x, y, 15, 15))
-        self.x, self.y = x, y
+class Head(pg.Rect):
+    def __init__(self, x, y, rotation):
+        super().__init__(x, y, 20, 20)
         self.rotation = rotation
-        self.score = 0
 
-    def ifCollision(self, lst):
-        if super().colliderect(lst):
+    def ifCollisionApple(self, apple):
+        if self.colliderect(apple):
             return True
 
-    def score_up(self):
-        self.score += 1
 
-
-rotations = {
-    'r': (15, 0),
-    'l': (-15, 0),
-    'u': (0, -15),
-    'd': (0, 15)
+rotation_speeds = {
+    'u': (0, -20),
+    'd': (0, 20),
+    'l': (-20, 0),
+    'r': (20, 0)
+}
+rotation_permissions = {
+    'u': (1, 1, 1, 0),
+    'd': (1, 1, 0, 1),
+    'l': (1, 0, 1, 1),
+    'r': (0, 1, 1, 1)
 }
 
+clock = pg.time.Clock()
+pg.init()
+pg.font.init()
+window = pg.display.set_mode((800, 400))
+try:
+    font = pg.font.Font('Decrypted.ttf', 36)
+except FileNotFoundError:
+    font = pg.font.SysFont('consolas', 20)
 
-pygame.init()
+game_over_font = pg.font.Font(pg.font.match_font('papyrus'), 40)
+game_over_text = game_over_font.render(
+    'press any button', False, (255, 255, 255))
 
-fonts = {
-    'papyrus': pygame.font.Font(match_font('papyrus'), 36),
-    'jokerman': pygame.font.Font(match_font('jokerman'), 23)
-}
 
-window = pygame.display.set_mode((WIDTH, HEIGHT))
-clock = pygame.time.Clock()
-person = Hero(10, 50, rotation='r')
+def new_apple():
+    apple_coords = (rn.randrange(40, 760, 20), rn.randrange(40, 360, 20))
+    return pg.Rect(*apple_coords, 20, 20)
+
+
 while True:
-    person.score = 0
-    food_list = [(random.randrange(15, WIDTH-15, 15),
-                  random.randrange(10, HEIGHT-15, 15)) for i in range(11)]
-    menu = True
-    while menu:
-        menu = fonts['papyrus'].render(
-            'START', False, random.choice(RANDOM_COLORS))
-        start = fonts['jokerman'].render(
-            'press any key', False, random.choice(RANDOM_COLORS))
-        window.blit(menu, (WIDTH//2-80, HEIGHT//2-72))
-        window.blit(start, (WIDTH//2-80, HEIGHT//2-10))
-        pygame.display.update()
-        pygame.time.delay(100)
+    head = Head(140, 60, 'r')
+    length = [(80, 60), (100, 60), (120, 60)]
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                menu = False
-
-    before_death = 10
-
+    apple = new_apple()
+    score = 0
     while True:
-        for event in pygame.event.get():
-
-            if event.type == pygame.QUIT:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
                 sys.exit()
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_UP and rotation_permissions[head.rotation][2]:
+                    head.rotation = 'u'
+                if event.key == pg.K_DOWN and rotation_permissions[head.rotation][3]:
+                    head.rotation = 'd'
+                if event.key == pg.K_LEFT and rotation_permissions[head.rotation][0]:
+                    head.rotation = 'l'
+                if event.key == pg.K_RIGHT and rotation_permissions[head.rotation][1]:
+                    head.rotation = 'r'
 
-            elif event.type == pygame.KEYDOWN:
-                if event.key == K_DOWN:
-                    person.rotation = 'd'
-                elif event.key == K_UP:
-                    person.rotation = 'u'
-                elif event.key == K_LEFT:
-                    person.rotation = 'l'
-                elif event.key == K_RIGHT:
-                    person.rotation = 'r'
+        if head.ifCollisionApple(apple):
+            apple = new_apple()
+            length.append(None)
+            score += 1
 
-        person.x += rotations[person.rotation][0]
-        person.y += rotations[person.rotation][1]
+        length.insert(0, (head.x, head.y))
+        length.__delitem__(-1)
+        head.x += rotation_speeds[head.rotation][0]
+        head.y += rotation_speeds[head.rotation][1]
 
-        window.fill(BG_COLOR)
-
-        foods = [pygame.draw.rect(window, random.choice(RANDOM_COLORS),
-                                  (*i, 5, 5))for i in food_list]
-        for food in enumerate(foods, 0):
-            if person.ifCollision(food[1]):
-                food_list.__delitem__(food[0])
-                person.score_up()
-                before_death += 2.0
-                if len(food_list) < 5:
-                    food_list.append((random.randrange(15, WIDTH-15, 15),
-                                      random.randrange(10, HEIGHT-15, 15)))
-
-        score = fonts['papyrus'].render(
-            'score: %d' % person.score, False, PERSON_COLOR)
-        before_death_text = fonts['papyrus'].render(
-            'secs: %d' % int(
-                before_death), False, PERSON_COLOR if before_death > 3.0 else pygame.Color(250, 0, 0)
-        )
-        window.blit(score, (10, 10))
-        window.blit(before_death_text, (650, 10))
-        pygame.draw.rect(window, PERSON_COLOR, person, 10)
-        pygame.display.update()
-
-        before_death -= 0.2
-
-        if before_death < 0:
+        window.fill((0, 100, 0))
+        window.blit(font.render('scr: %d' %
+                    score, False, (255, 255, 255)), (50, 45))
+        window.blit(font.render('len: %d' % (len(length)+1),
+                    False, (255, 255, 255)), (680, 45))
+        pg.draw.rect(window, (0, 255, 0), head)
+        pg.draw.rect(window, (255, 0, 0), apple)
+        body = [pg.draw.rect(window, (0, 255, 0), (snake[0], snake[1], 20, 20))
+                for snake in length]
+        blocks = [pg.draw.rect(window, (255, 255, 255), (20, 20, 760, 20)),
+                  pg.draw.rect(window, (255, 255, 255), (20, 20, 20, 360)),
+                  pg.draw.rect(window, (255, 255, 255), (20, 360, 760, 20)),
+                  pg.draw.rect(window, (255, 255, 255), (760, 20, 20, 360))]
+        pg.display.update()
+        if head.collidelist(blocks) > -1:
             break
 
-        pygame.time.delay(200)
+        if head.collidelist(body) > -1:
+            col = head.collidelist(body)
+            length = length[:col]
+
+        clock.tick(10)
+
+    while True:
+        game_over = True
+        window.blit(game_over_text, (270, 150))
+        pg.display.update()
+
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                sys.exit()
+            elif event.type == pg.KEYDOWN:
+                game_over = False
+        if not game_over:
+            break
